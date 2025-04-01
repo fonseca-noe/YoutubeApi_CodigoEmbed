@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Widget</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Clase para ocultar contenido -->
+    <style>
+        .hidden {
+            display: none !important;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script defer src="js/widget.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <div id="widgetContainer">
+        <div id="videoPreview" style="cursor: pointer;"></div>
+    </div>
+
+    <!-- Modal para reproducir el video o mostrar contenido del canal -->
+    <div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <!-- Contenedor principal del modal con id modalContent -->
+            <div class="modal-content hidden" id="modalContent">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="videoModalLabel">
+                        <i class="fa-solid fa-circle-play"></i> Reproduciendo video
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="ratio ratio-16x9" id="iframeContainer">
+                        <iframe id="videoFrame" src="" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                    <hr>
+                    <div id="videoDetails" class="p-3">
+                        <h4 id="title" class="fw-bold mb-2"></h4>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <div class="d-flex align-items-center">
+                                <span><i class="fa-solid fa-calendar-days me-2"></i><span
+                                        id="publishedDate"></span></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span><i class="fa-solid fa-eye"></i> <span id="views"></span></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span><i class="fa-solid fa-thumbs-up text-primary"></i> <span id="likes"></span></span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span><i class="fa-solid fa-comments me-2 text-secondary"></i><span
+                                        id="comments"></span></span>
+                            </div>
+                            <div>
+                                <a id="subscribeButton" href="#" target="_blank" class="btn btn-danger">
+                                    <i class="fa-solid fa-bell me-1"></i> Suscribirse
+                                </a>
+                            </div>
+                        </div>
+                        <hr>
+                        <h5 class="mb-3"><i class="fa-solid fa-comments"></i> Comentarios</h5>
+                        <div id="videoComments" class="overflow-auto p-3 bg-light rounded border"
+                            style="max-height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conservamos el resize del modal -->
+    <script>
+        const videoModal = document.getElementById("videoModal");
+        videoModal.addEventListener("show.bs.modal", function () {
+            window.parent.postMessage({ type: "resize", height: 1300 }, "*");
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Obtener parámetros desde la URL del iframe
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoUrl = urlParams.get("videoUrl");
+            const template = urlParams.get("template") || "";
+
+            if (!videoUrl) {
+                document.body.innerHTML = "<p>Error: No se proporcionó una URL.</p>";
+                return;
+            }
+            // Dependiendo del template recibido, llama a la función correspondiente.
+            switch (template) {
+                case "Single Video":
+                    await cargarVideo(videoUrl);
+                    break;
+                case "YouTube Channel":
+                    await cargarCanal(videoUrl);
+                    break;
+                case "Video Grid":
+                    await cargarVideoGrid(videoUrl);
+                    break;
+                case "YouTube Subscribe":
+                    await cargarYoutubeSubscribe(videoUrl);
+                    break;
+                case "Video Gallery":
+                    await cargarVideoGallery(videoUrl);
+                    break;
+                case "Video List":
+                    await cargarVideoList(videoUrl);
+                    break;
+                default:
+                    alert("Error")
+                    break;
+            }
+        });
+
+        async function cargarVideo(videoId, desdeCanal = false) {
+            // Si recibes una URL en lugar de un videoId, extrae el ID
+            if (videoId.includes("http")) {
+                videoId = extraerVideoId(videoId);
+            }
+
+            if (!videoId || videoId.length < 10) {
+                alert("No se pudo extraer el ID del video. Verifica la URL.");
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(`youtube_api.php?videoId=${videoId}`);
+                const datos = await respuesta.json();
+
+                if (!datos.items?.length) {
+                    alert("No se encontró el video.");
+                    return;
+                }
+
+                const { snippet, statistics } = datos.items[0];
+                const channelId = snippet.channelId;
+
+                if (desdeCanal) {
+                    actualizarModal(snippet, statistics, videoId, channelId);
+                    await cargarComentarios(videoId);
+                    return;
+                }
+                // Si no viene desde el canal, carga la vista previa del video
+                const vistaPrevia = document.getElementById("videoPreview");
+                vistaPrevia.innerHTML = `
+                    <div style="display: flex;justify-content: center;">
+                    <div class="video-card" style="position: relative; display: inline-block;">
+                        <img src="${snippet.thumbnails.high.url}" class="img-fluid" style="object-fit: cover; display: block;">
+                        <div class="video-details" style="position: absolute; top: 0; left: 0; right: 0;bottom: 0; background: rgba(0,0,0,0.7); color: #fff; opacity: 0; transition: opacity 0.3s; padding: 5px; font-size: 0.9rem;">
+                            <h6 style="margin: 0;">${snippet.title}</h6>
+                            <p class="color" style="margin: 0; font-size: 0.8rem;">${new Date(snippet.publishedAt).toLocaleDateString()}</p>
+                            <p class="color">${statistics.viewCount || "N/A"} Views • ${statistics.likeCount || "N/A"} Likes • ${statistics.commentCount || "N/A"} Comments</p>
+                        </div>
+                    </div>
+                    </div>
+                `;
+                document.querySelectorAll('.video-card').forEach(card => {
+                    card.addEventListener('mouseenter', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '1';
+                    });
+                    card.addEventListener('mouseleave', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '0';
+                    });
+                    card.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        actualizarModal(snippet, statistics, videoId, channelId);
+                        cargarComentarios(videoId);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener los datos del video:", error);
+                alert("Hubo un problema al cargar los datos del video.");
+            }
+        }
+
+        async function cargarCanal(url) {
+            let channelId;
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                if (pathname.includes("/channel/")) {
+                    channelId = pathname.split("/channel/")[1];
+                } else if (pathname.startsWith("/@")) {
+                    channelId = await obtenerChannelId(pathname.substring(1));
+                    if (!channelId) return;
+                }
+            } catch (e) {
+                return;
+            }
+
+            try {
+                const [canalResp, videosResp] = await Promise.all([
+                    fetch(`youtube_api.php?channelId=${channelId}`).then(res => res.json()),
+                    fetch(`youtube_api.php?videoGallery=${channelId}`).then(res => res.json())
+                ]);
+                if (!canalResp.items || canalResp.items.length === 0) return;
+
+                const canal = canalResp.items[0];
+                const { snippet, statistics, brandingSettings } = canal;
+                const bannerUrl = brandingSettings?.image?.bannerExternalUrl + "=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj";
+
+                const videoPreview = document.getElementById("videoPreview");
+
+                const channelHeaderHTML = `
+                    <div class="card shadow">
+                        <img src="${bannerUrl}" class="card-img-top" alt="Banner del canal" style="max-height: 200px; object-fit: cover; width: 100%;">
+                        <div class="card-body text-center">
+                            <img src="${snippet.thumbnails.medium.url}" class="rounded-circle border border-3 border-white" width="100">
+                            <h4 class="mt-2">${snippet.title}</h4>
+                            <p class="text-muted">${statistics.subscriberCount} Subscribers • ${statistics.videoCount} Videos • ${statistics.viewCount} Views</p>
+                            <a href="https://www.youtube.com/channel/${channelId}" target="_blank" class="btn btn-danger">
+                            <i class="fab fa-youtube"></i> YouTube ${statistics.subscriberCount}
+                            </a>
+                        </div>
+                    </div>
+                `;
+
+                // Construir carrusel de videos
+                let carouselItems = "";
+                if (videosResp.items && videosResp.items.length > 0) {
+                    for (let i = 0; i < videosResp.items.length; i += 2) {
+                        carouselItems += `<div class="carousel-item ${i === 0 ? 'active' : ''}"><div class="row">`;
+                        for (let j = i; j < i + 2 && j < videosResp.items.length; j++) {
+                            const video = videosResp.items[j];
+                            carouselItems += `
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <a href="#" class="video-link" data-video-id="${video.id}" 
+                                        data-bs-toggle="modal" data-bs-target="#videoModal">
+                                        <img src="${video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high.url}" class="card-img-top">
+                                    </a>
+                                    <div class="card-body">
+                                        <h6 class="card-title">${video.snippet.title}</h6>
+                                        <p class="text-muted">${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            `;
+                        }
+                        carouselItems += `</div></div>`;
+                    }
+                }
+                const carouselHTML = `
+                    <div id="videoCarousel" class="carousel slide mt-3" data-bs-interval="false">
+                        <div class="carousel-inner">
+                        ${carouselItems}
+                        </div>
+                        <button class="custom-carousel-control carousel-control-prev" type="button" data-bs-target="#videoCarousel" data-bs-slide="prev">
+                        <span class="custom-icon"><i class="fas fa-chevron-left"></i></span>
+                        <span class="visually-hidden">Anterior</span>
+                        </button>
+                        <button class="custom-carousel-control carousel-control-next" type="button" data-bs-target="#videoCarousel" data-bs-slide="next">
+                        <span class="custom-icon"><i class="fas fa-chevron-right"></i></span>
+                        <span class="visually-hidden">Siguiente</span>
+                        </button>
+                    </div>
+                    `;
+                videoPreview.innerHTML = channelHeaderHTML + carouselHTML;
+                ajustarAltura();
+
+                document.querySelectorAll(".video-link").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        const vid = link.getAttribute("data-video-id");
+                        // Al pasar true, se actualizan los datos del modal sin reemplazar la vista del canal
+                        cargarVideo(`https://www.youtube.com/watch?v=${vid}`, true);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener datos del canal:", error);
+            }
+        }
+
+        async function cargarVideoGrid(url) {
+            let channelId;
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                if (pathname.includes("/channel/")) {
+                    channelId = pathname.split("/channel/")[1];
+                } else if (pathname.startsWith("/@")) {
+                    channelId = await obtenerChannelId(pathname.substring(1));
+                    if (!channelId) return;
+                }
+            } catch (e) {
+                return;
+            }
+
+            try {
+                const [canalResp, videosResp] = await Promise.all([
+                    fetch(`youtube_api.php?channelId=${channelId}`).then(res => res.json()),
+                    fetch(`youtube_api.php?videoGallery=${channelId}`).then(res => res.json())
+                ]);
+                if (!canalResp.items || canalResp.items.length === 0) return;
+
+                const videoPreview = document.getElementById("videoPreview");
+
+                let carouselItems = "";
+                if (videosResp.items && videosResp.items.length > 0) {
+                    // Agrupar en slides de 16 videos
+                    for (let i = 0; i < videosResp.items.length; i += 16) {
+                        // Comienza un nuevo slide. Si es el primero, se marca como 'active'
+                        carouselItems += `<div class="carousel-item ${i === 0 ? 'active' : ''}">`;
+
+                        // Dentro de cada slide, crear 4 filas
+                        for (let row = 0; row < 4; row++) {
+                            carouselItems += `<div class="row mb-2">`;
+
+                            // Para cada fila, agregar 4 videos (columnas)
+                            for (let col = 0; col < 4; col++) {
+                                // Calcular el índice actual en el array de videos
+                                let index = i + row * 4 + col;
+                                // Asegurarse de no exceder el total de videos
+                                if (index >= videosResp.items.length) break;
+                                const video = videosResp.items[index];
+                                carouselItems += `
+                                    <div class="col-md-3">
+                                        <div class="video-container" style="position: relative;">
+                                            <div class="video-card" >
+                                                <a href="#" class="video-link" data-video-id="${video.id}" 
+                                                    data-bs-toggle="modal" data-bs-target="#videoModal">
+                                                    <img src="${video.snippet.thumbnails.medium.url}" class="card-img-top">
+                                                <span class="position-absolute top-50 start-50 translate-middle text-white" style="font-size: 3.5rem; opacity: 0.8;">
+                                                <i class="fas fa-play-circle" style="color:red;"></i>
+                                                </span>
+                                                </a>
+                                            </div>
+                                            <div class="video-details" style="position: absolute; top: 0; left: 0; right: 0;bottom: 0; background: rgba(0,0,0,0.7); color: #fff; opacity: 0; transition: opacity 0.3s; padding: 5px; font-size: 0.9rem;">
+                                            <h6 style="margin: 0;">${video.snippet.title}</h6>
+                                            <p class="color" style="margin: 0; font-size: 0.8rem;">${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                                            <p class="color">${video.statistics.viewCount || "N/A"} Views • ${video.statistics.likeCount || "N/A"} Likes • ${video.statistics.commentCount || "N/A"} Comments</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    `;
+                            } // fin ciclo de columnas
+                            carouselItems += `</div>`; // fin de la fila
+                        } // fin ciclo de filas
+
+                        carouselItems += `</div>`; // fin de slide
+                    }
+                }
+                const carouselHTML = `
+                <div id="videoCarousel" class="carousel slide mt-3" data-bs-interval="false">
+                    <div class="carousel-inner">
+                    ${carouselItems}
+                    </div>
+                    <button class="custom-carousel-control carousel-control-prev" type="button" data-bs-target="#videoCarousel" data-bs-slide="prev">
+                    <span class="custom-icon"><i class="fas fa-chevron-left"></i></span>
+                    <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="custom-carousel-control carousel-control-next" type="button" data-bs-target="#videoCarousel" data-bs-slide="next">
+                    <span class="custom-icon"><i class="fas fa-chevron-right"></i></span>
+                    <span class="visually-hidden">Siguiente</span>
+                    </button>
+                </div>
+                `;
+                videoPreview.innerHTML = carouselHTML;
+                ajustarAltura();
+                document.querySelectorAll('.video-container').forEach(container => {
+                    container.addEventListener('mouseenter', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '1';
+                    });
+                    container.addEventListener('mouseleave', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '0';
+                    });
+                });
+
+                document.querySelectorAll(".video-details").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        let vid = event.currentTarget.getAttribute("data-video-id");
+                        if (!vid) {
+                            vid = event.currentTarget.closest(".video-container").querySelector(".video-link").getAttribute("data-video-id");
+                        }
+                        cargarVideo(`https://www.youtube.com/watch?v=${vid}`, true);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener datos del canal:", error);
+            }
+        }
+
+        async function cargarYoutubeSubscribe(url) {
+            let channelId;
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                if (pathname.includes("/channel/")) {
+                    channelId = pathname.split("/channel/")[1];
+                } else if (pathname.startsWith("/@")) {
+                    channelId = await obtenerChannelId(pathname.substring(1));
+                    if (!channelId) return;
+                }
+            } catch (e) {
+                return;
+            }
+
+            try {
+                const [canalResp, videosResp] = await Promise.all([
+                    fetch(`youtube_api.php?channelId=${channelId}`).then(res => res.json()),
+                    fetch(`youtube_api.php?videoGallery=${channelId}`).then(res => res.json())
+                ]);
+                if (!canalResp.items || canalResp.items.length === 0) return;
+
+                const canal = canalResp.items[0];
+                const { snippet, statistics, brandingSettings } = canal;
+                const bannerUrl = brandingSettings?.image?.bannerExternalUrl + "=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj";
+
+                const videoPreview = document.getElementById("videoPreview");
+
+                const channelHeaderHTML = `
+                    <div class="channel-header" style="position: relative; height: 200px; background: url('${bannerUrl}') center/cover no-repeat;">
+                    <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5);"></div>
+                    <div style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); text-align: center; color: white;">
+                        <img src="${snippet.thumbnails.medium.url}" class="rounded-circle border border-3 border-white" width="100">
+                        <h4 class="mt-2">${snippet.title}</h4>
+                        <p class="mb-2 color">${statistics.subscriberCount} Subscribers • ${statistics.videoCount} Videos • ${statistics.viewCount} Views</p>
+                        <a href="https://www.youtube.com/channel/${channelId}" target="_blank" class="btn btn-danger">
+                        <i class="fab fa-youtube"></i> YouTube ${statistics.subscriberCount}
+                        </a>
+                    </div>
+                    </div>
+                `;
+                let carouselItems = "";
+                if (videosResp.items && videosResp.items.length > 0) {
+                    for (let i = 0; i < videosResp.items.length; i += 2) {
+                        carouselItems += `<div class="carousel-item ${i === 0 ? 'active' : ''}"><div class="row">`;
+                        for (let j = i; j < i + 2 && j < videosResp.items.length; j++) {
+                            const video = videosResp.items[j];
+                            carouselItems += `
+                        <div class="col-6">
+                          <div class="video-card" style="position: relative;"> 
+                            <a href="#" class="video-link" data-video-id="${video.id}" data-bs-toggle="modal" data-bs-target="#videoModal">
+                              <img src="${video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high.url}" class="img-fluid card-img-top" object-fit: cover;">
+                              <div class="video-details" style="position: absolute; top: 0; left: 0; right: 0;bottom: 0; background: rgba(0,0,0,0.7); color: #fff; opacity: 0; transition: opacity 0.3s; padding: 5px; font-size: 0.9rem;">
+                                <h6 style="margin: 0;">${video.snippet.title}</h6>
+                                <p class="color" style="margin: 0; font-size: 0.8rem;">${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                                <p class="color">${video.statistics.viewCount || "N/A"} Views • ${video.statistics.likeCount || "N/A"} Likes • ${video.statistics.commentCount || "N/A"} Comments</p>
+                              </div>
+                            </a>
+                          </div>
+                        </div>
+                      `;
+                        }
+                        carouselItems += `</div></div>`;
+                    }
+                }
+                const carouselHTML = `
+                    <div id="videoCarousel" class="carousel slide mt-3" data-bs-interval="false">
+                        <div class="carousel-inner">
+                        ${carouselItems}
+                        </div>
+                        <button class="custom-carousel-control carousel-control-prev" type="button" data-bs-target="#videoCarousel" data-bs-slide="prev">
+                        <span class="custom-icon"><i class="fas fa-chevron-left"></i></span>
+                        <span class="visually-hidden">Anterior</span>
+                        </button>
+                        <button class="custom-carousel-control carousel-control-next" type="button" data-bs-target="#videoCarousel" data-bs-slide="next">
+                        <span class="custom-icon"><i class="fas fa-chevron-right"></i></span>
+                        <span class="visually-hidden">Siguiente</span>
+                        </button>
+                    </div>
+                    `;
+                videoPreview.innerHTML = channelHeaderHTML + carouselHTML;
+                ajustarAltura();
+                document.querySelectorAll('.video-card').forEach(container => {
+                    container.addEventListener('mouseenter', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '1';
+                    });
+                    container.addEventListener('mouseleave', function () {
+                        const details = this.querySelector('.video-details');
+                        if (details) details.style.opacity = '0';
+                    });
+                });
+                document.querySelectorAll(".video-details").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        let vid = event.currentTarget.getAttribute("data-video-id");
+                        if (!vid) {
+                            vid = event.currentTarget.closest(".video-card").querySelector(".video-link").getAttribute("data-video-id");
+                        }
+                        cargarVideo(`https://www.youtube.com/watch?v=${vid}`, true);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener datos del canal:", error);
+            }
+        }
+
+        async function cargarVideoGallery(url) {
+            let channelId;
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                if (pathname.includes("/channel/")) {
+                    channelId = pathname.split("/channel/")[1];
+                } else if (pathname.startsWith("/@")) {
+                    channelId = await obtenerChannelId(pathname.substring(1));
+                    if (!channelId) return;
+                }
+            } catch (e) {
+                return;
+            }
+
+            try {
+                const [canalResp, videosResp] = await Promise.all([
+                    fetch(`youtube_api.php?channelId=${channelId}`).then(res => res.json()),
+                    fetch(`youtube_api.php?videoGallery=${channelId}`).then(res => res.json())
+                ]);
+                if (!canalResp.items || canalResp.items.length === 0) return;
+
+                const videoPreview = document.getElementById("videoPreview");
+                let carouselItems = "";
+                if (videosResp.items && videosResp.items.length > 0) {
+                    for (let i = 0; i < videosResp.items.length; i += 8) {
+                        carouselItems += `<div class="carousel-item ${i === 0 ? 'active' : ''}">`;
+                        for (let row = 0; row < 2; row++) {
+                            carouselItems += `<div class="row mb-2">`;
+                            for (let col = 0; col < 4; col++) {
+                                let index = i + row * 4 + col;
+                                if (index >= videosResp.items.length) break;
+                                const video = videosResp.items[index];
+                                carouselItems += `
+                                <div class="col-md-3 contenedor">
+                                    <div class="card video-card">
+                                        <a href="#" class="video-link" data-video-id="${video.id}" 
+                                            data-bs-toggle="modal" data-bs-target="#videoModal">
+                                            <img src="${video.snippet.thumbnails.high.url || video.snippet.thumbnails.medium.url}" class="card-img-top">
+                                        </a>
+                                        <div class="card-body">
+                                            <h6 class="title">${video.snippet.title}</h6>
+                                            <p class="text-muted">${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                                            <p class="text-muted">${video.statistics.viewCount || "N/A"} Views • ${video.statistics.likeCount || "N/A"} Likes • ${video.statistics.commentCount || "N/A"} Comments</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }
+                            carouselItems += `</div>`;
+                        }
+                        carouselItems += `</div>`;
+                    }
+                }
+                const carouselHTML = `
+                <div id="videoCarousel" class="carousel slide mt-3" data-bs-interval="false">
+                    <div class="carousel-inner">
+                    ${carouselItems}
+                    </div>
+                    <button class="custom-carousel-control carousel-control-prev" type="button" data-bs-target="#videoCarousel" data-bs-slide="prev">
+                    <span class="custom-icon"><i class="fas fa-chevron-left"></i></span>
+                    <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="custom-carousel-control carousel-control-next" type="button" data-bs-target="#videoCarousel" data-bs-slide="next">
+                    <span class="custom-icon"><i class="fas fa-chevron-right"></i></span>
+                    <span class="visually-hidden">Siguiente</span>
+                    </button>
+                </div>
+                `;
+                videoPreview.innerHTML = carouselHTML;
+                ajustarAltura();
+                document.querySelectorAll(".video-card").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        let vid = event.currentTarget.getAttribute("data-video-id");
+                        if (!vid) {
+                            vid = event.currentTarget.closest(".video-card").querySelector(".video-link").getAttribute("data-video-id");
+                        }
+                        cargarVideo(`https://www.youtube.com/watch?v=${vid}`, true);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener datos del canal:", error);
+            }
+        }
+
+        async function cargarVideoList(url) {
+            let channelId;
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                if (pathname.includes("/channel/")) {
+                    channelId = pathname.split("/channel/")[1];
+                } else if (pathname.startsWith("/@")) {
+                    channelId = await obtenerChannelId(pathname.substring(1));
+                    if (!channelId) return;
+                }
+            } catch (e) {
+                return;
+            }
+
+            try {
+                const [canalResp, videosResp] = await Promise.all([
+                    fetch(`youtube_api.php?channelId=${channelId}`).then(res => res.json()),
+                    fetch(`youtube_api.php?videoGallery=${channelId}`).then(res => res.json())
+                ]);
+                if (!canalResp.items || canalResp.items.length === 0) return;
+
+                const videoPreview = document.getElementById("videoPreview");
+
+                // Construir los items individuales para la lista
+                const videoItems = videosResp.items?.map(video => {
+                    const videoId = video.id.videoId || video.id;
+                    const title = video.snippet.title;
+                    const date = new Date(video.snippet.publishedAt).toLocaleDateString();
+                    const thumbnail = video.snippet.thumbnails.medium.url;
+                    const views = video.statistics?.viewCount || "N/A";
+                    const likes = video.statistics?.likeCount || "N/A";
+                    const comments = video.statistics?.commentCount || "N/A";
+
+                    return `
+                    <div class="video-list-item d-flex align-items-center mb-3 video-card">
+                        <a href="#" class="video-link me-3" data-video-id="${videoId}">
+                        <div class="thumbnail-wrapper position-relative" >
+                            <img src="${thumbnail}" alt="Thumbnail" class="img-fluid rounded" style="object-fit: cover; ">
+                            <span class="position-absolute top-50 start-50 translate-middle text-white" style="font-size: 3.5rem; opacity: 0.8;">
+                                <i class="fas fa-play-circle " style="color:red;"></i>
+                            </span>
+                        </div>
+                        </a>
+                        <div class="video-info flex-grow-1">
+                        <h6 class="mb-1 fw-bold">${title}</h6>
+                        <p class="text-muted mb-1">${date}</p>
+                        <p class="mb-0 text-muted">${views} Views • ${likes} Likes • ${comments} Comments</p>
+                        </div>
+                    </div>
+                    `;
+                }) || [];
+
+                // Agrupar los items en slides de 4 videos cada uno
+                let slidesHTML = "";
+                for (let i = 0; i < videoItems.length; i += 4) {
+                    let group = videoItems.slice(i, i + 4).join("");
+                    slidesHTML += `
+                    <div class="carousel-item ${i === 0 ? 'active' : ''}">
+                        <div class="video-list-group">
+                        ${group}
+                        </div>
+                    </div>
+                    `;
+                }
+
+                const carouselHTML = `
+                <div id="videoCarousel" class="carousel slide carousel-vertical mt-3" data-bs-interval="false">
+                    <div class="carousel-inner">
+                    ${slidesHTML}
+                    </div>
+                    <button class="custom-carousel-control carousel-control-prev" type="button" data-bs-target="#videoCarousel" data-bs-slide="prev">
+                    <span class="custom-icon"><i class="fas fa-chevron-up"></i></span>
+                    <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="custom-carousel-control carousel-control-next" type="button" data-bs-target="#videoCarousel" data-bs-slide="next">
+                    <span class="custom-icon"><i class="fas fa-chevron-down"></i></span>
+                    <span class="visually-hidden">Siguiente</span>
+                    </button>
+                </div>
+                `;
+                videoPreview.innerHTML = carouselHTML;
+                ajustarAltura();
+                document.querySelectorAll(".video-card").forEach(link => {
+                    link.addEventListener("click", event => {
+                        event.preventDefault();
+                        let vid = event.currentTarget.getAttribute("data-video-id");
+                        if (!vid) {
+                            vid = event.currentTarget.closest(".video-card").querySelector(".video-link").getAttribute("data-video-id");
+                        }
+                        cargarVideo(`https://www.youtube.com/watch?v=${vid}`, true);
+                    });
+                });
+            } catch (error) {
+                console.error("Error al obtener datos del canal:", error);
+            }
+        }
+
+
+        async function obtenerChannelId(handle) {
+            try {
+                const respuesta = await fetch(`youtube_api.php?handle=${handle}`);
+                const datos = await respuesta.json();
+                if (!datos.items || datos.items.length === 0) {
+                    alert("No se encontró el canal.");
+                    return null;
+                }
+                return datos.items[0].id;
+            } catch (error) {
+                console.error("Error al obtener el ID del canal:", error);
+                return null;
+            }
+        }
+
+        function actualizarModal(snippet, statistics, videoId, channelId) {
+            const modalContent = document.getElementById("modalContent");
+            modalContent.classList.add("hidden");
+
+            document.getElementById("title").textContent = snippet.title || "Título no disponible";
+            document.getElementById("publishedDate").textContent = new Date(snippet.publishedAt).toLocaleDateString() || "Fecha no disponible";
+            document.getElementById("views").textContent = statistics.viewCount || "N/A";
+            document.getElementById("likes").textContent = statistics.likeCount || "N/A";
+            document.getElementById("comments").textContent = statistics.commentCount || "N/A";
+            document.getElementById("subscribeButton").href = `https://www.youtube.com/channel/${channelId}`;
+
+            const videoFrame = document.getElementById("videoFrame");
+            videoFrame.onload = () => {
+                modalContent.classList.remove("hidden");
+            };
+            videoFrame.src = `https://www.youtube.com/embed/${videoId}`;
+
+            new bootstrap.Modal(document.getElementById("videoModal")).show();
+        }
+
+        async function cargarComentarios(videoId) {
+            try {
+                const respuesta = await fetch(`youtube_api.php?comments=true&videoId=${videoId}`);
+                const datos = await respuesta.json();
+                const container = document.getElementById("videoComments");
+                if (!datos.items || datos.items.length === 0) {
+                    container.innerHTML = "<p>No hay comentarios disponibles.</p>";
+                    return;
+                }
+                container.innerHTML = datos.items.map(comment => {
+                    const fechaOriginal = comment.snippet.topLevelComment.snippet.publishedAt;
+                    const fechaFormateada = new Date(fechaOriginal).toLocaleDateString();
+                    return `
+            <div class="d-flex align-items-start mb-3 p-3 border rounded shadow-sm bg-white">
+              <img src="${comment.snippet.topLevelComment.snippet.authorProfileImageUrl}" onerror="this.onerror=null; this.src='img/default-avatar.png';" alt="Avatar" class="rounded-circle me-3" width="50" height="50">
+              <div class="w-100">
+                <p class="mb-1"><strong>${comment.snippet.topLevelComment.snippet.authorDisplayName}</strong> <small class="text-muted">${fechaFormateada}</small></p>
+                <p>${comment.snippet.topLevelComment.snippet.textDisplay}</p>
+                <p class="text-muted small"><i class="fa-solid fa-thumbs-up text-primary"></i> ${comment.snippet.topLevelComment.snippet.likeCount}</p>
+              </div>
+            </div>
+          `;
+                }).join("");
+            } catch (error) {
+                console.error("Error al obtener comentarios:", error);
+                document.getElementById("videoComments").innerHTML = "<p>No se pudieron cargar los comentarios.</p>";
+            }
+        }
+        function extraerVideoId(url) {
+            try {
+                let videoId;
+                if (url.includes("youtube.com") || url.includes("youtu.be")) {
+                    videoId = new URL(url).searchParams.get("v") || url.split("/").pop();
+                }
+                return videoId;
+            } catch {
+                return null;
+            }
+        }
+
+        function ajustarAltura() {
+            setTimeout(() => {
+                const preview = document.getElementById("widgetContainer");
+                const altura = preview.scrollHeight + 20;
+                window.parent.postMessage({ type: "resize", height: altura }, "*");
+            }, 300);
+        }
+
+        videoModal.addEventListener("hidden.bs.modal", function () {
+            document.getElementById("videoFrame").src = "";
+            ajustarAltura();
+        });
+    </script>
+</body>
+
+</html>
