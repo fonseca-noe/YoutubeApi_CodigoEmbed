@@ -6,7 +6,7 @@ if (!isset($_GET['videoId']) && !isset($_GET['channelId']) && !isset($_GET['hand
     exit;
 }
 
-$API_KEY = "AIzaSyAYuXoxHfxolDmmlPeNUa5I_Kw8bvAwxNo";  // Reemplázala con tu clave real
+$API_KEY = "Tu_api_key";  // Reemplázala con tu clave real
 
 if (isset($_GET['videoId'])) {
     $videoId = $_GET['videoId'];

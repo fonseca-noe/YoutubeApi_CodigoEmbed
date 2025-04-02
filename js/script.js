@@ -902,7 +902,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
           }
           embedCode = `
-          <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+          <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
           <div class="mi-widget" data-video-url="https://www.youtube.com/watch?v=${videoId}" data-template="Single Video"></div>
           `;
           break;
@@ -912,13 +912,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (url.includes("/channel/")) {
             const channelId = url.split("/channel/")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/channel/${channelId}" data-template="YouTube Channel"></div>
             `;
           } else if (url.includes("/@")) {
             const handle = url.split("/@")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/@${handle}" data-template="YouTube Channel"></div>
             `;
           } else {
@@ -932,13 +932,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (url.includes("/channel/")) {
             const channelId = url.split("/channel/")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/channel/${channelId}" data-template="Video Grid"></div>
             `;
           } else if (url.includes("/@")) {
             const handle = url.split("/@")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/@${handle}" data-template="Video Grid"></div>
             `;
           } else {
@@ -952,13 +952,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (url.includes("/channel/")) {
             const channelId = url.split("/channel/")[1];
             embedCode = `
-          <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+          <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
           <div class="mi-widget" data-video-url="https://www.youtube.com/channel/${channelId}" data-template="YouTube Subscribe"></div>
             `;
           } else if (url.includes("/@")) {
             const handle = url.split("/@")[1];
             embedCode = `
-          <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+          <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
           <div class="mi-widget" data-video-url="https://www.youtube.com/@${handle}" data-template="YouTube Subscribe"></div>
             `;
           } else {
@@ -972,13 +972,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (url.includes("/channel/")) {
             const channelId = url.split("/channel/")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/channel/${channelId}" data-template="Video Gallery"></div>
             `;
           } else if (url.includes("/@")) {
             const handle = url.split("/@")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/@${handle}" data-template="Video Gallery"></div>
             `;
           } else {
@@ -992,13 +992,13 @@ document.addEventListener("DOMContentLoaded", () => {
           if (url.includes("/channel/")) {
             const channelId = url.split("/channel/")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/channel/${channelId}" data-template="Video List"></div>
             `;
           } else if (url.includes("/@")) {
             const handle = url.split("/@")[1];
             embedCode = `
-            <script src="http://localhost/practicas/widget03/js/widget.js" defer></script>
+            <script src="http://localhost/YoutubeApi_CodigoEmbed/js/widget.js" defer></script>
             <div class="mi-widget" data-video-url="https://www.youtube.com/@${handle}" data-template="Video List"></div>
             `;
           } else {
