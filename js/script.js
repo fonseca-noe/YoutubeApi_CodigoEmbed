@@ -19,38 +19,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const videoCommentsContainer = document.getElementById("videoComments");
 
   let tipoSeleccionado = "";
+  const urlSingleVideo="https://www.youtube.com/watch?v=VdS9ZGHHXWQ";
+  const urlHandle="https://www.youtube.com/@EDteam";
 
   listaPlantillas.forEach((item) => {
-    item.addEventListener("click", () => {
+    item.addEventListener("click", async () => {
       listaPlantillas.forEach((li) => li.classList.remove("active"));
       item.classList.add("active");
 
       tipoSeleccionado = item.dataset.template;
       vistaPrevia.innerHTML = `<h5>${tipoSeleccionado}</h5>`;
 
-      if (
-        tipoSeleccionado === "Single Video" ||
-        tipoSeleccionado === "YouTube Channel" ||
-        tipoSeleccionado === "Video Grid" ||
-        tipoSeleccionado === "YouTube Subscribe" ||
-        tipoSeleccionado === "Video Gallery" ||
-        tipoSeleccionado === "Video List"
-      ) {
-        formularioVideo.classList.remove("d-none");
-      } else {
-        formularioVideo.classList.add("d-none");
+      if (tipoSeleccionado === "Single Video") {
+        await cargarVideo(urlSingleVideo);
+      } else if (tipoSeleccionado === "YouTube Channel") {
+        await cargarCanal(urlHandle);
+      } else if (tipoSeleccionado === "Video Grid") {
+        await cargarVideoGrid(urlHandle);
+      } else if (tipoSeleccionado === "YouTube Subscribe") {
+        await cargarYoutubeSubscribe(urlHandle);
+      } else if (tipoSeleccionado === "Video Gallery") {
+        await cargarVideoGallery(urlHandle);
+      } else if (tipoSeleccionado === "Video List") {
+        await cargarVideoList(urlHandle);
       }
+      
+      if (
+      tipoSeleccionado === "Single Video" ||
+      tipoSeleccionado === "YouTube Channel" ||
+      tipoSeleccionado === "Video Grid" ||
+      tipoSeleccionado === "YouTube Subscribe" ||
+      tipoSeleccionado === "Video Gallery" ||
+      tipoSeleccionado === "Video List"
+    ) {
+      formularioVideo.classList.remove("d-none");
+    } else {
+      formularioVideo.classList.add("d-none");
+    }
     });
   });
 
   btnCargarVideo.addEventListener("click", async () => {
     const url = inputVideoUrl.value.trim();
-
     if (!url) {
       alert("Por favor, ingresa una URL.");
       return;
     }
-
     if (tipoSeleccionado === "Single Video") {
       await cargarVideo(url);
     } else if (tipoSeleccionado === "YouTube Channel") {
