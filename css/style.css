@@ -1,26 +1,32 @@
 .sidebar {
-  background-color: #ffffff;
-  border-right: 2px solid #ddd;
+  background-color: #333;
   padding: 20px;
+  border-radius: 20px;
 }
 
+html, body {
+  height: 100vh;
+  margin: 0;
+  background-color: #f5f4eb;
+  padding: 10px;
+}
 .template-list li {
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 20px;
   margin-bottom: 5px;
-  background-color: #f1f1f1;
+  background-color: #CF3A46;
   cursor: pointer;
   transition: background 0.3s;
 }
 
 .template-list li:hover {
-  background-color: #007bff;
+  background-color: #94242D;
   color: white;
 }
 
 .preview-box {
-  border: 2px dashed #aaa;
-  min-height: 300px;
+  border-radius: 20px;
+  height: 100%;
   background-color: #fff;
   font-size: 1.2rem;
   color: #555;
