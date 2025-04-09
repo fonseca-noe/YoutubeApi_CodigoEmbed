@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Crear el iframe que apunta a widget.html y pasar videoUrl y template como parámetros
         const iframe = document.createElement("iframe");
-        iframe.src = `http://localhost/practicas/widget03/widget.html?videoUrl=${encodeURIComponent(videoUrl)}&template=${encodeURIComponent(template)}`;
+        iframe.src = `https://925398678.senati.chat.pe/widget.html?videoUrl=${encodeURIComponent(videoUrl)}&template=${encodeURIComponent(template)}`;
         iframe.width = "100%";
         iframe.height = "300px"; // Altura inicial pequeña
         iframe.allowFullscreen = true;
